@@ -39,7 +39,7 @@ class Prototype(
     val lineDefined: Int,
     val lastLineDefined: Int,
     val numParams: Byte,
-    val IsVararg: Byte,
+    val isVararg: Byte,
     val maxStackSize: Byte,
     val code: IntArray,
     val constants: Array<Any?>,
@@ -61,7 +61,7 @@ fun unDump(data: InputStream): Prototype {
 
 fun printHeader(prototype: Prototype) {
     val funcType = if (prototype.lineDefined > 0) "function"  else "main"
-    val varargFlag = if (prototype.IsVararg > 0) "+" else ""
+    val varargFlag = if (prototype.isVararg > 0) "+" else ""
     println("$funcType <${prototype.source}:${prototype.lineDefined},${prototype.lastLineDefined}> (${prototype.code.size} instructions)")
     print("${prototype.numParams}$varargFlag params, ${prototype.maxStackSize} slots, ${prototype.upvalues.size} upvalues, ")
     println("${prototype.locVars.size} locals, ${prototype.constants.size} constants, ${prototype.protos.size} functions")
