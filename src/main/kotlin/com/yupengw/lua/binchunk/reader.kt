@@ -4,8 +4,6 @@ import java.io.InputStream
 import java.lang.Exception
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.file.Files
-import java.nio.file.Paths
 
 class Reader(private val data: InputStream){
     fun readByte(): Byte = data.read().toByte()
@@ -110,8 +108,4 @@ class Reader(private val data: InputStream){
             readUpValueNames()
         )
     }
-}
-
-fun main() {
-    Reader(Files.readAllBytes(Paths.get("C:\\Users\\yupen\\Desktop\\luac.out")).inputStream()).checkHeader()
 }

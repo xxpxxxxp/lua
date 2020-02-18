@@ -1,5 +1,6 @@
 package com.yupengw.lua.binchunk
 
+import com.yupengw.lua.vm.*
 import java.io.InputStream
 
 const val TAG_NIL: Byte = 0x00
@@ -67,10 +68,41 @@ fun printHeader(prototype: Prototype) {
     println("${prototype.locVars.size} locals, ${prototype.constants.size} constants, ${prototype.protos.size} functions")
 }
 
+fun printOperands(instruction: Int) {
+    when (OpMode(instruction)) {
+        OpCodeType.IABC -> {
+            val (a, b, c) = ABC(instruction)
+            print(a)
+            if (BMode(instruction) != OpArgType.OpArgN)
+                print(" ${ if (b > 0xff) -1 - (b and 0xff) else b }")
+
+            if (CMode(instruction) != OpArgType.OpArgN)
+                print(" ${ if (c > 0xff) -1 - (c and 0xff) else c }")
+        }
+        OpCodeType.IABx -> {
+            val (a, bx) = ABx(instruction)
+            print(a)
+            when (BMode(instruction)) {
+                OpArgType.OpArgK -> print(" ${-1-bx}")
+                OpArgType.OpArgU -> print(" $bx")
+            }
+        }
+        OpCodeType.IAsBx -> {
+            val (a, sbx) = AsBx(instruction)
+            print("$a $sbx")
+        }
+        OpCodeType.IAx -> {
+            print(-1 - Ax(instruction))
+        }
+    }
+}
+
 fun printCode(prototype: Prototype) {
     for ((i, c) in prototype.code.withIndex()) {
         val line = if (prototype.lineInfo.isEmpty()) "-" else prototype.lineInfo[i].toString()
-        println("\t${i+1}\t[$line]\t0x${c.toString(8)}")
+        print("\t${i+1}\t[$line]\t${OpName(c)}\t")
+        printOperands(c)
+        println()
     }
 }
 
