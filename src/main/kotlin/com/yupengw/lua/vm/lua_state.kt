@@ -1,9 +1,10 @@
 package com.yupengw.lua.vm
 
+import com.yupengw.lua.api.ArithOp
+import com.yupengw.lua.api.CompareOp
 import com.yupengw.lua.api.LuaDataType
 import com.yupengw.lua.api.LuaState
-import com.yupengw.lua.stat.LuaStack
-import com.yupengw.lua.stat.typeOf
+import com.yupengw.lua.stat.*
 import java.lang.Exception
 
 class LuaStateImpl: LuaState {
@@ -89,18 +90,10 @@ class LuaStateImpl: LuaState {
 
     override fun toBoolean(idx: Int): Boolean = convertToBoolean(stack.get(idx))
     override fun toNumber(idx: Int): Double = toNumberX(idx).first
-    override fun toNumberX(idx: Int): Pair<Double, Boolean> {
-        val luaValue = stack.get(idx) ?: return 0.0 to false
-        if (luaValue is Double) return luaValue to true
-        if (luaValue is Long) return luaValue.toDouble() to true
-        return 0.0 to false
-    }
+    override fun toNumberX(idx: Int): Pair<Double, Boolean> = convertToFloat(stack.get(idx))
 
     override fun toInteger(idx: Int): Long = toIntegerX(idx).first
-    override fun toIntegerX(idx: Int): Pair<Long, Boolean> =
-        stack.get(idx).let {
-            if (it is Long) it to true else 0L to false
-        }
+    override fun toIntegerX(idx: Int): Pair<Long, Boolean> = convertToInteger(stack.get(idx))
 
     override fun toString(idx: Int): String = toStringX(idx).first
     override fun toStringX(idx: Int): Pair<String, Boolean> {
@@ -114,9 +107,123 @@ class LuaStateImpl: LuaState {
         return "" to false
     }
 
-    private fun convertToBoolean(luaValue: Any?): Boolean {
-        if (luaValue == null) return true
-        if (luaValue is Boolean) return luaValue
-        return true
+    override fun arith(op: ArithOp) {
+        val b = stack.pop()
+        val a = if (op != ArithOp.LUA_OPUNM && op != ArithOp.LUA_OPBNOT) stack.pop() else b
+
+        val operator = operators.getValue(op)
+        stack.push(arith(a, b, operator) ?: throw Exception("arithmetic error!"))
+    }
+
+    private fun arith(a: Any?, b: Any?, op: Operator): Any? {
+        if (op.floatFun == null) {  // bitwise
+            convertToInteger(a).let { (i, ok1) ->
+                convertToInteger(b).let { (j, ok2)  ->
+                    if (ok1 && ok2)
+                        return op.integerFun!!.invoke(i, j)
+                }
+            }
+        } else {
+            if (op.integerFun != null && a is Long && b is Long) {    // add, sub, mul, mod, idiv, unm
+                return op.integerFun.invoke(a, b)
+            }
+            convertToFloat(a).let { (i, ok1) ->
+                convertToFloat(b).let { (j, ok2)  ->
+                    if (ok1 && ok2)
+                        return op.floatFun.invoke(i, j)
+                }
+            }
+        }
+
+        return null
+    }
+
+    override fun compare(idx1: Int, idx2: Int, op: CompareOp): Boolean {
+        val a = stack.get(idx1)
+        val b = stack.get(idx2)
+
+
+
+        when (op) {
+            CompareOp.LUA_OPEQ -> {
+                return if (a == null || b == null)  a == null && b == null
+                else when (a::class) {
+                    Boolean::class -> b is Boolean && b == (a as Boolean)
+                    String::class -> b is String && b == (a as String)
+                    Long::class ->
+                        when (b::class) {
+                            Long::class -> (a as Long) == (b as Long)
+                            Double::class -> (a as Long).toDouble() == (b as Double)
+                            else -> false
+                        }
+                    Double::class ->
+                        when (b::class) {
+                            Double::class -> (a as Double) == (b as Double)
+                            Long::class -> (a as Double) == (b as Long).toDouble()
+                            else -> false
+                        }
+                    else -> a == b
+                }
+            }
+            CompareOp.LUA_OPLT -> {
+                if (a != null && b != null) {
+                    when (a::class) {
+                        String::class -> if (b is String) return (a as String) < b
+                        Long::class ->
+                            when (b::class) {
+                                Long::class -> return (a as Long) < (b as Long)
+                                Double::class -> return (a as Long).toDouble() < (b as Double)
+                            }
+                        Double::class ->
+                            when (b::class) {
+                                Double::class -> return (a as Double) < (b as Double)
+                                Long::class -> return (a as Double) < (b as Long).toDouble()
+                            }
+                    }
+                }
+                throw Exception("comparison error!")
+            }
+            CompareOp.LUA_OPLE -> {
+                if (a != null && b != null) {
+                    when (a::class) {
+                        String::class -> if (b is String) return (a as String) <= b
+                        Long::class ->
+                            when (b::class) {
+                                Long::class -> return (a as Long) <= (b as Long)
+                                Double::class -> return (a as Long).toDouble() <= (b as Double)
+                            }
+                        Double::class ->
+                            when (b::class) {
+                                Double::class -> return (a as Double) <= (b as Double)
+                                Long::class -> return (a as Double) <= (b as Long).toDouble()
+                            }
+                    }
+                }
+                throw Exception("comparison error!")
+            }
+        }
+    }
+
+    override fun len(idx: Int) {
+        val luaValue = stack.get(idx)
+        if (luaValue is String) return stack.push(luaValue.length.toLong())
+        throw Exception("length error!")
+    }
+
+    override fun concat(n: Int) {
+        when (n) {
+            0 -> stack.push("")
+            1 -> {}
+            else -> {
+                repeat(n-1) {
+                    if (!isString(-1) || !isString(-2)) throw Exception("concatenation error!")
+                    val s2 = toString(-1)
+                    val s1 = toString(-2)
+                    stack.pop()
+                    stack.pop()
+                    stack.push(s1 + s2)
+                }
+            }
+        }
     }
 }

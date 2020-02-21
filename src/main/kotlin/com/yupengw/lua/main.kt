@@ -1,5 +1,7 @@
 package com.yupengw.lua
 
+import com.yupengw.lua.api.ArithOp
+import com.yupengw.lua.api.CompareOp
 import com.yupengw.lua.api.LuaDataType
 import com.yupengw.lua.api.LuaState
 import com.yupengw.lua.vm.LuaStateImpl
@@ -20,13 +22,16 @@ fun printStack(ls: LuaState) {
 
 fun main(args: Array<String>) {
     val ls: LuaState = LuaStateImpl()
-    ls.pushBoolean(true); printStack(ls)
-    ls.pushInteger(10); printStack(ls)
-    ls.pushNil(); printStack(ls)
-    ls.pushString("hello"); printStack(ls)
-    ls.pushValue(-4); printStack(ls)
-    ls.replace(3); printStack(ls)
-    ls.setTop(6); printStack(ls)
-    ls.remove(-3); printStack(ls)
-    ls.setTop(-5); printStack(ls)
+    ls.pushInteger(1)
+    ls.pushString("2.0")
+    ls.pushString("3.0")
+    ls.pushNumber(4.0)
+    printStack(ls)
+
+    ls.arith(ArithOp.LUA_OPADD); printStack(ls)
+    ls.arith(ArithOp.LUA_OPBNOT); printStack(ls)
+    ls.len(2); printStack(ls)
+    ls.concat(3); printStack(ls)
+    ls.pushBoolean(ls.compare(1, 2, CompareOp.LUA_OPEQ))
+    printStack(ls)
 }
