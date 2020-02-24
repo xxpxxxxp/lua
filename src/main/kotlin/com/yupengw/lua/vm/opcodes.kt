@@ -1,5 +1,7 @@
 package com.yupengw.lua.vm
 
+import com.yupengw.lua.api.LuaVM
+
 enum class OpCodeType {
     IABC, IABx, IAsBx, IAx
 }
@@ -67,16 +69,17 @@ class OpCode (
     val argBMode: OpArgType,    // B arg mode
     val argCMode: OpArgType,    // C arg mode
     val opMode: OpCodeType,     // op mode
-    val name: String
+    val name: String,
+    val action: ((i: Int, vm: LuaVM) -> Unit)? = null
 )
 
 val opcodes = arrayOf(
     /* T    A   B   C   mode    name    */
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "MOVE"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgN, OpCodeType.IABx, "LOADK"),
-    OpCode(0, 1, OpArgType.OpArgN, OpArgType.OpArgN, OpCodeType.IABx, "LOADKX"),
-    OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgU, OpCodeType.IABC, "LOADBOOL"),
-    OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgN, OpCodeType.IABC, "LOADNIL"),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "MOVE", ::move),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgN, OpCodeType.IABx, "LOADK", ::loadK),
+    OpCode(0, 1, OpArgType.OpArgN, OpArgType.OpArgN, OpCodeType.IABx, "LOADKX", ::loadKx),
+    OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgU, OpCodeType.IABC, "LOADBOOL", ::loadBool),
+    OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgN, OpCodeType.IABC, "LOADNIL", ::loadNil),
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgN, OpCodeType.IABC, "GETUPVAL"),
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgK, OpCodeType.IABC, "GETTABUP"),
     OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgK, OpCodeType.IABC, "GETTABLE"),
@@ -86,37 +89,37 @@ val opcodes = arrayOf(
     OpCode(0, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SETTABLE"),
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgU, OpCodeType.IABC, "NEWTABLE"),
     OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgK, OpCodeType.IABC, "SELF"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "ADD"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SUB"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "MUL"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "MOD"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "POW"),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "ADD", ::add),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SUB", ::sub),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "MUL", ::mul),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "MOD", ::mod),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "POW", ::pow),
 
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "DIV"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "IDIV"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "BAND"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "BOR"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "BXOR"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SHL"),
-    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SHR"),
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "UNM"),
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "BNOT"),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "DIV", ::div),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "IDIV", ::idiv),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "BAND", ::band),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "BOR", ::bor),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "BXOR", ::bxor),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SHL", ::shl),
+    OpCode(0, 1, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SHR", ::shr),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "UNM", ::unm),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "BNOT", ::bnot),
 
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "NOT"),
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "LEN"),
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgR, OpCodeType.IABC, "CONCAT"),
-    OpCode(0, 0, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IAsBx, "JMP"),
-    OpCode(1, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "EQ"),
-    OpCode(1, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "LT"),
-    OpCode(1, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "LE"),
-    OpCode(1, 0, OpArgType.OpArgN, OpArgType.OpArgU, OpCodeType.IABC, "TEST"),
-    OpCode(1, 1, OpArgType.OpArgR, OpArgType.OpArgU, OpCodeType.IABC, "TESTSET"),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "NOT", ::not),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IABC, "LEN", ::len),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgR, OpCodeType.IABC, "CONCAT", ::concat),
+    OpCode(0, 0, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IAsBx, "JMP", ::jmp),
+    OpCode(1, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "EQ", ::eq),
+    OpCode(1, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "LT", ::lt),
+    OpCode(1, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "LE", ::le),
+    OpCode(1, 0, OpArgType.OpArgN, OpArgType.OpArgU, OpCodeType.IABC, "TEST", ::test),
+    OpCode(1, 1, OpArgType.OpArgR, OpArgType.OpArgU, OpCodeType.IABC, "TESTSET", ::testSet),
 
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgU, OpCodeType.IABC, "CALL"),
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgU, OpCodeType.IABC, "TAILCALL"),
     OpCode(0, 0, OpArgType.OpArgU, OpArgType.OpArgN, OpCodeType.IABC, "RETURN"),
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IAsBx, "FORLOOP"),
-    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IAsBx, "FORPREP"),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IAsBx, "FORLOOP", ::forLoop),
+    OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IAsBx, "FORPREP", ::forPrep),
     OpCode(0, 0, OpArgType.OpArgN, OpArgType.OpArgU, OpCodeType.IABC, "TFORCALL"),
     OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgN, OpCodeType.IAsBx, "TFORLOOP"),
     OpCode(0, 0, OpArgType.OpArgU, OpArgType.OpArgU, OpCodeType.IABC, "SETLIST"),

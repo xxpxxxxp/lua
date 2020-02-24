@@ -1,14 +1,13 @@
 package com.yupengw.lua.vm
 
-import com.yupengw.lua.api.ArithOp
-import com.yupengw.lua.api.CompareOp
-import com.yupengw.lua.api.LuaDataType
-import com.yupengw.lua.api.LuaState
+import com.yupengw.lua.api.*
+import com.yupengw.lua.binchunk.Prototype
 import com.yupengw.lua.stat.*
 import java.lang.Exception
 
-class LuaStateImpl: LuaState {
-    private val stack = LuaStack(20)
+class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
+    private val stack = LuaStack(stackSize)
+    private var pc: Int = 0
 
     override fun getTop(): Int = stack.top
     override fun absIndex(idx: Int): Int = stack.absIndex(idx)
@@ -142,8 +141,6 @@ class LuaStateImpl: LuaState {
         val a = stack.get(idx1)
         val b = stack.get(idx2)
 
-
-
         when (op) {
             CompareOp.LUA_OPEQ -> {
                 return if (a == null || b == null)  a == null && b == null
@@ -213,7 +210,7 @@ class LuaStateImpl: LuaState {
     override fun concat(n: Int) {
         when (n) {
             0 -> stack.push("")
-            1 -> {}
+            1 -> { /* ignore */ }
             else -> {
                 repeat(n-1) {
                     if (!isString(-1) || !isString(-2)) throw Exception("concatenation error!")
@@ -226,4 +223,18 @@ class LuaStateImpl: LuaState {
             }
         }
     }
+
+    override fun PC(): Int = pc
+
+    override fun addPC(n: Int) {
+        pc += n
+    }
+
+    override fun fetch(): Int = proto.code[pc++]
+
+    override fun getConst(idx: Int)  = stack.push(proto.constants[idx])
+
+    override fun getRK(rk: Int) =
+        if (rk > 0xff) getConst(rk and 0xff)    // constant!
+        else pushValue(rk + 1)
 }
