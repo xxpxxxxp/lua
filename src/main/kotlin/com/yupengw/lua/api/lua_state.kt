@@ -43,4 +43,14 @@ interface LuaState {
     fun compare(idx1: Int, idx2: Int, op: CompareOp): Boolean
     fun len(idx: Int)
     fun concat(n: Int)
+
+    // table functions
+    fun newTable() = createTable(0, 0)
+    fun createTable(nArr: Int, nRec: Int)
+    fun getTable(idx: Int): Any?
+    fun getField(idx: Int, k: String): Any?
+    fun getI(idx: Int, i: Long): Any?
+    fun setTable(idx: Int)
+    fun setFeild(idx: Int, k: String)
+    fun setI(idx: Int, i: Long)
 }

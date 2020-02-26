@@ -9,33 +9,33 @@ import java.lang.Exception
 fun typeOf(luaValue: Any?): LuaDataType =
     if (luaValue == null) LuaDataType.LUA_TNIL
     else {
-        when (luaValue::class) {
-            Boolean::class -> LuaDataType.LUA_TBOOLEAN
-            Long::class, Double::class -> LuaDataType.LUA_TNUMBER
-            String::class -> LuaDataType.LUA_TSTRING
+        when (luaValue) {
+            is Boolean -> LuaDataType.LUA_TBOOLEAN
+            is Long, Double -> LuaDataType.LUA_TNUMBER
+            is String -> LuaDataType.LUA_TSTRING
+            is LuaTable -> LuaDataType.LUA_TTABLE
             else -> throw Exception("TODO!")
         }
     }
 
 fun convertToFloat(luaValue: Any?): Pair<Double, Boolean> {
     if (luaValue != null)
-        when (luaValue::class) {
-            Double::class -> return (luaValue as Double) to true
-            Long::class -> return (luaValue as Long).toDouble() to true
-            String::class -> return parseFloat(luaValue as String)
+        when (luaValue) {
+            is Double -> return luaValue to true
+            is Long -> return luaValue.toDouble() to true
+            is String -> return parseFloat(luaValue)
         }
     return 0.0 to false
 }
 
-fun convertToInteger(luaValue: Any?): Pair<Long, Boolean> {
-    if (luaValue != null)
-        when (luaValue::class) {
-            Long::class -> return (luaValue as Long) to true
-            Double::class -> return floatToInteger(luaValue as Double)
-            String::class -> return stringToInteger(luaValue as String)
-        }
-    return 0L to false
-}
+fun convertToInteger(luaValue: Any?): Pair<Long, Boolean> =
+    when (luaValue) {
+        is Long -> luaValue to true
+        is Double -> floatToInteger(luaValue)
+        is String -> stringToInteger(luaValue)
+        else -> 0L to false
+    }
+
 
 private fun stringToInteger(s: String): Pair<Long, Boolean> {
     parseInteger(s).takeIf { it.second }?.let { return it }

@@ -144,19 +144,19 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
         when (op) {
             CompareOp.LUA_OPEQ -> {
                 return if (a == null || b == null)  a == null && b == null
-                else when (a::class) {
-                    Boolean::class -> b is Boolean && b == (a as Boolean)
-                    String::class -> b is String && b == (a as String)
-                    Long::class ->
-                        when (b::class) {
-                            Long::class -> (a as Long) == (b as Long)
-                            Double::class -> (a as Long).toDouble() == (b as Double)
+                else when (a) {
+                    is Boolean -> b is Boolean && b == a
+                    is String -> b is String && b == a
+                    is Long ->
+                        when (b) {
+                            is Long -> a == b
+                            is Double -> a.toDouble() == b
                             else -> false
                         }
-                    Double::class ->
-                        when (b::class) {
-                            Double::class -> (a as Double) == (b as Double)
-                            Long::class -> (a as Double) == (b as Long).toDouble()
+                    is Double ->
+                        when (b) {
+                            is Double -> a == b
+                            is Long -> a == b.toDouble()
                             else -> false
                         }
                     else -> a == b
@@ -164,17 +164,17 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
             }
             CompareOp.LUA_OPLT -> {
                 if (a != null && b != null) {
-                    when (a::class) {
-                        String::class -> if (b is String) return (a as String) < b
-                        Long::class ->
-                            when (b::class) {
-                                Long::class -> return (a as Long) < (b as Long)
-                                Double::class -> return (a as Long).toDouble() < (b as Double)
+                    when (a) {
+                        is String -> if (b is String) return a < b
+                        is Long ->
+                            when (b) {
+                                is Long -> return a < b
+                                is Double -> return a.toDouble() < b
                             }
-                        Double::class ->
-                            when (b::class) {
-                                Double::class -> return (a as Double) < (b as Double)
-                                Long::class -> return (a as Double) < (b as Long).toDouble()
+                        is Double ->
+                            when (b) {
+                                is Double -> return a < b
+                                is Long -> return a < b.toDouble()
                             }
                     }
                 }
@@ -182,17 +182,17 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
             }
             CompareOp.LUA_OPLE -> {
                 if (a != null && b != null) {
-                    when (a::class) {
-                        String::class -> if (b is String) return (a as String) <= b
-                        Long::class ->
-                            when (b::class) {
-                                Long::class -> return (a as Long) <= (b as Long)
-                                Double::class -> return (a as Long).toDouble() <= (b as Double)
+                    when (a) {
+                        is String -> if (b is String) return a <= b
+                        is Long ->
+                            when (b) {
+                                is Long -> return a <= b
+                                is Double -> return a.toDouble() <= b
                             }
-                        Double::class ->
-                            when (b::class) {
-                                Double::class -> return (a as Double) <= (b as Double)
-                                Long::class -> return (a as Double) <= (b as Long).toDouble()
+                        is Double ->
+                            when (b) {
+                                is Double -> return a <= b
+                                is Long -> return a <= b.toDouble()
                             }
                     }
                 }
@@ -203,8 +203,13 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
 
     override fun len(idx: Int) {
         val luaValue = stack.get(idx)
-        if (luaValue is String) return stack.push(luaValue.length.toLong())
-        throw Exception("length error!")
+        stack.push(
+            when (luaValue) {
+                is String -> luaValue.length.toLong()
+                is LuaTable -> luaValue.len()
+                else -> throw Exception("length error!")
+            }
+        )
     }
 
     override fun concat(n: Int) {
@@ -237,4 +242,46 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
     override fun getRK(rk: Int) =
         if (rk > 0xff) getConst(rk and 0xff)    // constant!
         else pushValue(rk + 1)
+
+    override fun createTable(nArr: Int, nRec: Int) {
+        stack.push(LuaTable(nArr, nRec))
+    }
+
+    private fun getTable(table: Any?, key: Any?): Any? {
+        if (table is LuaTable) {
+            val value = table.get(key)
+            stack.push(value)
+            return typeOf(value)
+        }
+        throw Exception("not a table!")
+    }
+
+    override fun getTable(idx: Int): Any? {
+        val table = stack.get(idx)
+        val key = stack.pop()
+        return getTable(table, key)
+    }
+
+    override fun getField(idx: Int, k: String): Any? = getTable(stack.get(idx), k)
+
+    override fun getI(idx: Int, i: Long): Any? = getTable(stack.get(idx), i)
+
+    private fun setTable(table: Any?, key: Any?, value: Any?) {
+        if (table is LuaTable) {
+            table.put(key, value)
+            return
+        }
+        throw Exception("not a table!")
+    }
+
+    override fun setTable(idx: Int) {
+        val table = stack.get(idx)
+        val value = stack.pop()
+        val key = stack.pop()
+        setTable(table, key, value)
+    }
+
+    override fun setFeild(idx: Int, k: String) = setTable(stack.get(idx), k, stack.pop())
+
+    override fun setI(idx: Int, i: Long) = setTable(stack.get(idx), i, stack.pop())
 }
