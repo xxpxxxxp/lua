@@ -1,4 +1,4 @@
-package com.yupengw.lua.stat
+package com.yupengw.lua.state
 
 import com.yupengw.lua.api.ArithOp
 import com.yupengw.lua.number.*

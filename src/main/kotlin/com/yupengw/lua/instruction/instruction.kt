@@ -1,7 +1,6 @@
-package com.yupengw.lua.vm
+package com.yupengw.lua.instruction
 
 import com.yupengw.lua.api.LuaVM
-import java.lang.Exception
 
 const val MAXARG_Bx = (1 shl 18) - 1
 const val MAXARG_sBx = MAXARG_Bx shr 1
@@ -24,8 +23,4 @@ fun BMode(instruction: Int): OpArgType = opcodes[Opcode(instruction)].argBMode
 
 fun CMode(instruction: Int): OpArgType = opcodes[Opcode(instruction)].argCMode
 
-fun Execute(i: Int, vm: LuaVM) {
-    val action = opcodes[Opcode(i)].action
-    if (action != null) action(i, vm)
-    else throw Exception(OpName(i))
-}
+fun Execute(i: Int, vm: LuaVM) = (opcodes[Opcode(i)].action ?: throw Exception(OpName(i))).invoke(i, vm)

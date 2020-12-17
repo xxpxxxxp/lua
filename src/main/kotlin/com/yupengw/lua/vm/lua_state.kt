@@ -1,13 +1,30 @@
 package com.yupengw.lua.vm
 
-import com.yupengw.lua.api.*
-import com.yupengw.lua.binchunk.Prototype
-import com.yupengw.lua.stat.*
-import java.lang.Exception
+import com.yupengw.lua.api.ArithOp
+import com.yupengw.lua.api.CompareOp
+import com.yupengw.lua.api.LuaDataType
+import com.yupengw.lua.api.LuaVM
+import com.yupengw.lua.binchunk.unDump
+import com.yupengw.lua.instruction.Execute
+import com.yupengw.lua.instruction.OpCodeOperator
+import com.yupengw.lua.instruction.Opcode
+import com.yupengw.lua.state.*
+import java.io.InputStream
 
-class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
-    private val stack = LuaStack(stackSize)
-    private var pc: Int = 0
+class LuaStateImpl(stackSize: Int): LuaVM {
+    private var stack = LuaStack(stackSize)
+
+    override fun PC(): Int = stack.pc
+
+    override fun addPC(n: Int) { stack.pc += n }
+
+    override fun fetch(): Int = stack.closure!!.proto.code[stack.pc++]
+
+    override fun getConst(idx: Int)  = stack.push(stack.closure!!.proto.constants[idx])
+
+    override fun getRK(rk: Int) =
+        if (rk > 0xff) getConst(rk and 0xff)    // constant!
+        else pushValue(rk + 1)
 
     override fun getTop(): Int = stack.top
     override fun absIndex(idx: Int): Int = stack.absIndex(idx)
@@ -16,28 +33,21 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
         return true
     }
 
-    // pop n luaValue from stack
     override fun pop(n: Int) = repeat(n) { stack.pop() }
 
-    // copy luaValue of fromIdx to toIdx
     override fun copy(fromIdx: Int, toIdx: Int) = stack.set(toIdx, stack.get(fromIdx))
 
-    // push luaValue at idx to top
     override fun pushValue(idx: Int) = stack.push(stack.get(idx))
 
-    // pop out top and replace the luaValue at idx
     override fun replace(idx: Int) = stack.set(idx, stack.pop())
 
-    // pop out top and insert into idx (shift stack up)
     override fun insert(idx: Int) = rotate(idx, 1)
 
-    // remove luaValue at idx and shift stack down
     override fun remove(idx: Int) {
         rotate(idx, -1)
         pop(1)
     }
 
-    // rotate [idx, top] n pos towards top (if n is negative, towards bottom)
     override fun rotate(idx: Int, n: Int) {
         val t = stack.top - 1
         val p = stack.absIndex(idx) - 1
@@ -47,8 +57,6 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
         stack.reverse(p, t)
     }
 
-    // idx < top: pop (top - idx)
-    // idx > top: insert (idx - top) nil
     override fun setTop(idx: Int) {
         val newTop = stack.absIndex(idx)
         if (newTop < 0) throw Exception("stack underflow!")
@@ -79,22 +87,11 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
     override fun type(idx: Int): LuaDataType =
         if (stack.isValid(idx)) typeOf(stack.get(idx)) else LuaDataType.LUA_TNONE
 
-    override fun isNone(idx: Int): Boolean = type(idx) == LuaDataType.LUA_TNONE
-    override fun isNil(idx: Int): Boolean = type(idx) == LuaDataType.LUA_TNIL
-    override fun isNoneOrNil(idx: Int): Boolean = type(idx).let { it == LuaDataType.LUA_TNONE || it == LuaDataType.LUA_TNIL }
-    override fun isBoolean(idx: Int): Boolean = type(idx) == LuaDataType.LUA_TBOOLEAN
     override fun isInteger(idx: Int): Boolean = stack.get(idx) is Long
-    override fun isNumber(idx: Int): Boolean = toNumberX(idx).second
-    override fun isString(idx: Int): Boolean = type(idx).let { it == LuaDataType.LUA_TSTRING || it == LuaDataType.LUA_TNUMBER }
 
     override fun toBoolean(idx: Int): Boolean = convertToBoolean(stack.get(idx))
-    override fun toNumber(idx: Int): Double = toNumberX(idx).first
     override fun toNumberX(idx: Int): Pair<Double, Boolean> = convertToFloat(stack.get(idx))
-
-    override fun toInteger(idx: Int): Long = toIntegerX(idx).first
     override fun toIntegerX(idx: Int): Pair<Long, Boolean> = convertToInteger(stack.get(idx))
-
-    override fun toString(idx: Int): String = toStringX(idx).first
     override fun toStringX(idx: Int): Pair<String, Boolean> {
         val luaValue = stack.get(idx) ?: return "" to false
         if (luaValue is String) return luaValue to true
@@ -229,20 +226,6 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
         }
     }
 
-    override fun PC(): Int = pc
-
-    override fun addPC(n: Int) {
-        pc += n
-    }
-
-    override fun fetch(): Int = proto.code[pc++]
-
-    override fun getConst(idx: Int)  = stack.push(proto.constants[idx])
-
-    override fun getRK(rk: Int) =
-        if (rk > 0xff) getConst(rk and 0xff)    // constant!
-        else pushValue(rk + 1)
-
     override fun createTable(nArr: Int, nRec: Int) {
         stack.push(LuaTable(nArr, nRec))
     }
@@ -281,7 +264,78 @@ class LuaStateImpl(stackSize: Int, private val proto: Prototype): LuaVM {
         setTable(table, key, value)
     }
 
-    override fun setFeild(idx: Int, k: String) = setTable(stack.get(idx), k, stack.pop())
+    override fun setField(idx: Int, k: String) = setTable(stack.get(idx), k, stack.pop())
 
     override fun setI(idx: Int, i: Long) = setTable(stack.get(idx), i, stack.pop())
+
+    override fun load(chunk: InputStream, chunkName: String, mode: String): Int {
+        stack.push(Closure(unDump(chunk)))
+        return 0
+    }
+
+    override fun call(nArgs: Int, nResults: Int) {
+        val c = stack.get(-nArgs-1)
+        if (c !is Closure)
+            throw Exception("not function!")
+        println("call ${c.proto.source}<${c.proto.lineDefined},${c.proto.lastLineDefined}>")
+        callLuaClosure(nArgs, nResults, c)
+    }
+
+    private fun callLuaClosure(nArgs: Int, nResults: Int, c: Closure) {
+        val nRegs = c.proto.maxStackSize
+        val nParams = c.proto.numParams
+        val isVarargs = c.proto.isVararg.toInt() == 1
+
+        val funcAndArgs = stack.popN(nArgs + 1)
+        val newStack =
+            if (nArgs > nParams && isVarargs)
+                LuaStack(nRegs + 20, c, funcAndArgs.drop(nParams+1))
+            else
+                LuaStack(nRegs + 20, c)
+
+        newStack.pushN(funcAndArgs.drop(1), nParams.toInt())
+        newStack.top = nRegs.toInt()
+
+        pushLuaStack(newStack)
+        runLuaClosure()
+        popLuaStack()
+
+        if (nResults != 0) {
+            val results = newStack.popN(newStack.top - nRegs)
+            stack.check(results.size)
+            stack.pushN(results, nResults)
+        }
+    }
+
+    private fun pushLuaStack(stack: LuaStack) {
+        stack.prev = this.stack
+        this.stack = stack
+    }
+
+    private fun popLuaStack() {
+        val stack = this.stack
+        this.stack = stack.prev!!
+        stack.prev = null
+    }
+
+    private fun runLuaClosure() {
+        while (true) {
+            val inst = fetch()
+            Execute(inst, this)
+            if (Opcode(inst) == OpCodeOperator.OP_RETURN.value)
+                break
+        }
+    }
+
+    override fun registerCount(): Int = stack.closure!!.proto.maxStackSize.toInt()
+
+    override fun loadVararg(n: Int) {
+        val c = if (n < 0) stack.varargs.size else n
+        stack.check(c)
+        stack.pushN(stack.varargs, c)
+    }
+
+    override fun loadProto(idx: Int) {
+        stack.push(Closure(stack.closure!!.proto.protos[idx]))
+    }
 }

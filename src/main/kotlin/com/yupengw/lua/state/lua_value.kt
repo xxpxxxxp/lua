@@ -1,10 +1,9 @@
-package com.yupengw.lua.stat
+package com.yupengw.lua.state
 
 import com.yupengw.lua.api.LuaDataType
 import com.yupengw.lua.number.floatToInteger
 import com.yupengw.lua.number.parseFloat
 import com.yupengw.lua.number.parseInteger
-import java.lang.Exception
 
 fun typeOf(luaValue: Any?): LuaDataType =
     if (luaValue == null) LuaDataType.LUA_TNIL
@@ -14,6 +13,7 @@ fun typeOf(luaValue: Any?): LuaDataType =
             is Long, Double -> LuaDataType.LUA_TNUMBER
             is String -> LuaDataType.LUA_TSTRING
             is LuaTable -> LuaDataType.LUA_TTABLE
+            is Closure -> LuaDataType.LUA_TFUNCTION
             else -> throw Exception("TODO!")
         }
     }

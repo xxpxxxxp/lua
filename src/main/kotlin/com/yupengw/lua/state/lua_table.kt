@@ -1,7 +1,6 @@
-package com.yupengw.lua.stat
+package com.yupengw.lua.state
 
 import com.yupengw.lua.number.floatToInteger
-import java.lang.Exception
 
 class LuaTable(nArr: Int, nRec: Int) {
     private val arr: MutableList<Any?> = MutableList(nArr){ null }

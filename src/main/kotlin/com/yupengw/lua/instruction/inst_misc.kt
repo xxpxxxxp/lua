@@ -1,7 +1,6 @@
-package com.yupengw.lua.vm
+package com.yupengw.lua.instruction
 
 import com.yupengw.lua.api.LuaVM
-import java.lang.Exception
 
 fun move(i: Int, vm: LuaVM) {
     val (a, b, _) = ABC(i)

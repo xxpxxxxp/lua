@@ -1,6 +1,6 @@
 package com.yupengw.lua.binchunk
 
-import com.yupengw.lua.vm.*
+import com.yupengw.lua.instruction.*
 import java.io.InputStream
 
 const val TAG_NIL: Byte = 0x00

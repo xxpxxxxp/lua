@@ -2,34 +2,59 @@ package com.yupengw.lua.api
 
 interface LuaState {
     // basic stack manipulation
+    // idx of top
     fun getTop(): Int
+
     fun absIndex(idx: Int): Int
+
+    // make sure slots has at least n available
     fun checkStack(n: Int): Boolean
+
+    // pop n luaValue from stack
     fun pop(n: Int)
+
+    // copy luaValue of fromIdx to toIdx
     fun copy(fromIdx: Int, toIdx: Int)
+
+    // push luaValue at idx to top
     fun pushValue(idx: Int)
+
+    // pop out top and replace the luaValue at idx
     fun replace(idx: Int)
+
+    // pop out top and insert into idx (shift stack up)
     fun insert(idx: Int)
+
+    // remove luaValue at idx and shift stack down
     fun remove(idx: Int)
+
+    // rotate [idx, top] n pos towards top (if n is negative, towards bottom)
     fun rotate(idx: Int, n: Int)
+
+    // idx < top: pop (top - idx)
+    // idx > top: insert (idx - top) nil
     fun setTop(idx: Int)
 
     // access functions
     fun typeName(tp: LuaDataType): String
     fun type(idx: Int): LuaDataType
-    fun isNone(idx: Int): Boolean
-    fun isNil(idx: Int): Boolean
-    fun isNoneOrNil(idx: Int): Boolean
-    fun isBoolean(idx: Int): Boolean
+
+    // type check at idx
+    fun isNone(idx: Int): Boolean = type(idx) == LuaDataType.LUA_TNONE
+    fun isNil(idx: Int): Boolean = type(idx) == LuaDataType.LUA_TNIL
+    fun isNoneOrNil(idx: Int): Boolean = type(idx).let { it == LuaDataType.LUA_TNONE || it == LuaDataType.LUA_TNIL }
+    fun isBoolean(idx: Int): Boolean = type(idx) == LuaDataType.LUA_TBOOLEAN
     fun isInteger(idx: Int): Boolean
-    fun isNumber(idx: Int): Boolean
-    fun isString(idx: Int): Boolean
+    fun isNumber(idx: Int): Boolean = toNumberX(idx).second
+    fun isString(idx: Int): Boolean = type(idx).let { it == LuaDataType.LUA_TSTRING || it == LuaDataType.LUA_TNUMBER }
+
+    // to functions
     fun toBoolean(idx: Int): Boolean
-    fun toInteger(idx: Int): Long
+    fun toInteger(idx: Int): Long = toIntegerX(idx).first
     fun toIntegerX(idx: Int): Pair<Long, Boolean>
-    fun toNumber(idx: Int): Double
+    fun toNumber(idx: Int): Double = toNumberX(idx).first
     fun toNumberX(idx: Int): Pair<Double, Boolean>
-    fun toString(idx: Int): String
+    fun toString(idx: Int): String = toStringX(idx).first
     fun toStringX(idx: Int): Pair<String, Boolean>
 
     // push functions
@@ -51,6 +76,6 @@ interface LuaState {
     fun getField(idx: Int, k: String): Any?
     fun getI(idx: Int, i: Long): Any?
     fun setTable(idx: Int)
-    fun setFeild(idx: Int, k: String)
+    fun setField(idx: Int, k: String)
     fun setI(idx: Int, i: Long)
 }

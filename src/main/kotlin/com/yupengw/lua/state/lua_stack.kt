@@ -1,9 +1,17 @@
-package com.yupengw.lua.stat
+package com.yupengw.lua.state
 
-class LuaStack(size: Int) {
+class LuaStack(
+    size: Int,
+    val closure: Closure? = null,
+    val varargs: List<Any?> = listOf(),
+) {
     var slots = arrayOfNulls<Any?>(size)
     var top = 0
 
+    var prev: LuaStack? = null
+    var pc: Int = 0
+
+    // make sure slots has at least n available
     fun check(n: Int) {
         if (top + n > slots.size) {
             val tmp = arrayOfNulls<Any?>(top + n)
@@ -12,11 +20,13 @@ class LuaStack(size: Int) {
         }
     }
 
+    // push value to top
     fun push(luaValue: Any?) {
         if (top == slots.size) throw Exception("stack overflow!")
         slots[top++] = luaValue
     }
 
+    // pop top value
     fun pop(): Any? {
         if (top < 1) throw Exception("stack underflow!")
         top--
@@ -53,6 +63,16 @@ class LuaStack(size: Int) {
             slots[t] = tmp
             f++
             t--
+        }
+    }
+
+    fun popN(n: Int): List<Any?> = List(n) { pop() }.reversed()
+
+    fun pushN(vals: List<Any?>, n: Int) {
+        val len = vals.size
+        val size = if (n < 0) len else n
+        for (i in 0 until size) {
+            push(if (i < len) vals[i] else null)
         }
     }
 }

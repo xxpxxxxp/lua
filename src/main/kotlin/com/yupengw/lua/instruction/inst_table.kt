@@ -1,4 +1,4 @@
-package com.yupengw.lua.vm
+package com.yupengw.lua.instruction
 
 import com.yupengw.lua.api.LuaVM
 
@@ -53,10 +53,28 @@ fun setList(i: Int, vm: LuaVM) {
     val (a, b, c) = ABC(i)
     val table = a + 1
 
+    var size = b
+    val bIsZero = b == 0
+    if (bIsZero) {
+        size = vm.toInteger(-1).toInt() - a
+        vm.pop(1)
+    }
+
     val batch = if (c > 0) c - 1 else Ax(vm.fetch())
     var idx = batch * LFIELDS_PRE_FLUSH
-    for (j in 1..b) {
+    for (j in 1..size) {
         vm.pushValue(table + j)
         vm.setI(table, ++idx)
+    }
+
+    if (bIsZero) {
+        for (j in vm.registerCount()+1..vm.getTop()) {
+            idx++
+            vm.pushValue(j)
+            vm.setI(table, idx)
+        }
+
+        // clear stack
+        vm.setTop(vm.registerCount())
     }
 }

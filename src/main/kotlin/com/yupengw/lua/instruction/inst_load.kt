@@ -1,4 +1,4 @@
-package com.yupengw.lua.vm
+package com.yupengw.lua.instruction
 
 import com.yupengw.lua.api.LuaVM
 
