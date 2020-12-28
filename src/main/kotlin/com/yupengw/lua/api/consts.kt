@@ -35,3 +35,8 @@ enum class CompareOp {
     LUA_OPLT,       // <
     LUA_OPLE        // <=
 }
+
+const val LUA_MINSTACK = 20
+const val LUAI_MAXSTACK = 1000000
+const val LUA_REGISTRYINDEX = -LUAI_MAXSTACK - 1000
+const val LUA_RIDX_GLOBALS = 2L

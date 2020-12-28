@@ -1,7 +1,11 @@
 package com.yupengw.lua.state
 
+import com.yupengw.lua.api.LUA_REGISTRYINDEX
+import com.yupengw.lua.vm.LuaStateImpl
+
 class LuaStack(
     size: Int,
+    private val state: LuaStateImpl,
     val closure: Closure? = null,
     val varargs: List<Any?> = listOf(),
 ) {
@@ -36,17 +40,26 @@ class LuaStack(
     }
 
     fun absIndex(idx: Int): Int =
-        if (idx >= 0) idx else idx + top + 1
+        if (idx <= LUA_REGISTRYINDEX || idx >= 0) idx
+        else idx + top + 1
 
     fun isValid(idx: Int): Boolean =
-        absIndex(idx) in 1..top
+        idx == LUA_REGISTRYINDEX || absIndex(idx) in 1..top
 
     fun get(idx: Int): Any? {
+        if (idx == LUA_REGISTRYINDEX)
+            return state.registry
+
         val absIdx = absIndex(idx)
         return if (absIdx in 1..top) slots[absIdx-1] else null
     }
 
     fun set(idx: Int, luaValue: Any?) {
+        if (idx == LUA_REGISTRYINDEX) {
+            state.registry = luaValue as LuaTable
+            return
+        }
+
         val absIdx = absIndex(idx)
         if (absIdx !in 1..top)
             throw Exception("invalid index!")

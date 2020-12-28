@@ -20,10 +20,27 @@ fun printStack(ls: LuaState) {
     println()
 }
 
+fun print(ls: LuaState): Int {
+    val nArgs = ls.getTop()
+    for (i in 1..nArgs) {
+        when {
+            ls.isBoolean(i) -> print(ls.toBoolean(i))
+            ls.isString(i) -> print(ls.toString(i))
+            else -> print(ls.typeName(ls.type(i)))
+        }
+
+        if (i < nArgs)
+            print("\t")
+    }
+    println()
+    return 0
+}
+
 fun main(args: Array<String>) {
     if (args.isNotEmpty()) {
         FileInputStream(args[0]).use { fis ->
-            val ls: LuaVM = LuaStateImpl(100)
+            val ls: LuaVM = LuaStateImpl()
+            ls.register("print") { print(it) }
             ls.load(fis, args[0], "b")
             ls.call(0, 0)
         }

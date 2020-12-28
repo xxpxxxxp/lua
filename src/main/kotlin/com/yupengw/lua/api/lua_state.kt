@@ -72,10 +72,20 @@ interface LuaState {
     // table functions
     fun newTable() = createTable(0, 0)
     fun createTable(nArr: Int, nRec: Int)
-    fun getTable(idx: Int): Any?
+    fun getTable(idx: Int): LuaDataType
     fun getField(idx: Int, k: String): Any?
     fun getI(idx: Int, i: Long): Any?
     fun setTable(idx: Int)
     fun setField(idx: Int, k: String)
     fun setI(idx: Int, i: Long)
+
+    // global table operations
+    fun pushGlobalTable()
+    fun getGlobal(name: String): Any?
+    fun setGlobal(name: String)
+    fun register(name: String, f: KtFunction)
+}
+
+fun interface KtFunction {
+    fun call(state: LuaState): Int
 }

@@ -24,4 +24,8 @@ interface LuaVM: LuaState {
     fun registerCount(): Int
     fun loadVararg(n: Int)
     fun loadProto(idx: Int)
+
+    fun pushKtFunction(f: KtFunction)
+    fun isKtFunction(idx: Int): Boolean
+    fun toKtFunction(idx: Int): KtFunction?
 }

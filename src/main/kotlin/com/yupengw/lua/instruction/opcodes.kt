@@ -81,7 +81,7 @@ val opcodes = arrayOf(
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgU, OpCodeType.IABC, "LOADBOOL", ::loadBool),
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgN, OpCodeType.IABC, "LOADNIL", ::loadNil),
     OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgN, OpCodeType.IABC, "GETUPVAL"),
-    OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgK, OpCodeType.IABC, "GETTABUP"),
+    OpCode(0, 1, OpArgType.OpArgU, OpArgType.OpArgK, OpCodeType.IABC, "GETTABUP", ::getTabUp),
     OpCode(0, 1, OpArgType.OpArgR, OpArgType.OpArgK, OpCodeType.IABC, "GETTABLE", ::getTable),
     OpCode(0, 0, OpArgType.OpArgK, OpArgType.OpArgK, OpCodeType.IABC, "SETTABUP"),
 
